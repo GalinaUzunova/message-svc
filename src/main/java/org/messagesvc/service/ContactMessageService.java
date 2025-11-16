@@ -23,7 +23,6 @@ public class ContactMessageService {
 
     private final String COMPANY_EMAIL="gbuzunova13@gmail.com";
 
-
     public ContactMessageService(JavaMailSender javaMailSender, ContactMessageRepository repository) {
         this.javaMailSender = javaMailSender;
         this.repository = repository;
@@ -51,7 +50,6 @@ public class ContactMessageService {
 
     @Async
     public void sendEmailToCompany(ContactMessage message) {
-
 
         try {
             log.info("📧 Preparing to send email to company: " + "gbuzunova");
