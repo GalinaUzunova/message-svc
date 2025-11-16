@@ -5,6 +5,8 @@ import jakarta.mail.internet.MimeMessage;
 import org.messagesvc.model.ContactMessage;
 import org.messagesvc.repository.ContactMessageRepository;
 import org.messagesvc.web.dto.ContactRequest;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -28,7 +30,7 @@ public class ContactMessageService {
         this.javaMailSender = javaMailSender;
         this.repository = repository;
     }
-
+    @CacheEvict(value = "messages",allEntries = true)
     public ContactMessage processContactMessage(ContactRequest request) {
 
        ContactMessage message = ContactMessage.builder()
@@ -50,6 +52,7 @@ public class ContactMessageService {
     }
 
     @Async
+    @CacheEvict(value = "messages",allEntries = true)
     public void sendEmailToCompany(ContactMessage message) {
 
         try {
@@ -72,6 +75,7 @@ public class ContactMessageService {
     }
 
     @Async
+    @CacheEvict(value = "messages",allEntries = true)
     public void sendAutoReplyToUser(ContactMessage message) {
         try {
 
@@ -109,6 +113,7 @@ public class ContactMessageService {
                 "<hr>" +
                 "<p>Best regards,<br>EcoSpace Team</p>";
     }
+    @Cacheable("messages")
     public List<ContactRequest>getAllMessages(){
      return    this.repository.findAllByOrderByCreatedAtDesc().stream().map(this::convertToDto)
                 .collect(Collectors.toList());
@@ -126,12 +131,13 @@ public class ContactMessageService {
 
         return dto;
     }
+    @Cacheable("messages")
     public List<ContactRequest>getAllMessagesByToday(){
        List<ContactMessage>sentToday=repository.findByCreatedAtDate(LocalDate.now());
        return sentToday.stream().map(this::convertToDto).collect(Collectors.toList());
     }
 
-
+    @CacheEvict(value = "messages",allEntries = true)
     public void deleteByID(UUID id) {
         Optional<ContactMessage>message=this.repository.getAllById(id);
         message.ifPresent(this.repository::delete);
