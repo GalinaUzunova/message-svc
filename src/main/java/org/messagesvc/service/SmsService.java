@@ -4,13 +4,13 @@ import com.twilio.Twilio;
 import com.twilio.type.PhoneNumber;
 import com.twilio.rest.api.v2010.account.Message;
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
+
 import org.messagesvc.web.dto.SubscriptionRemainderRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
+
 public class SmsService {
 
     @Value("${twilio.account-sid}")
@@ -25,24 +25,24 @@ public class SmsService {
     public void init() {
         try {
             Twilio.init(accountSid,authToken);
-            log.info("✅ Twilio initialized successfully for account: {}", accountSid);
+
         } catch (Exception e) {
-            log.error("❌ Twilio initialization failed: {}", e.getMessage());
+            System.err.println(" Twilio initialization failed");
         }
     }
 
     public void sendSms(String message, String toPhone) {
         try {
-            Message twilioMessage = Message.creator(
+            Message.creator(
                     new PhoneNumber(toPhone),
                     new PhoneNumber(fromPhone),
                     message
             ).create();
 
-            log.info("SMS sent successfully!");
+            System.out.println("SMS sent successfully!");
 
         } catch (Exception e) {
-            log.error("ERROR sending SMS: " + e.getMessage());
+            System.out.println("ERROR sending SMS: " + e.getMessage());
 
         }
 

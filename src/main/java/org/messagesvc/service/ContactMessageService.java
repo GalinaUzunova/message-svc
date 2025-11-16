@@ -2,8 +2,6 @@ package org.messagesvc.service;
 
 
 import jakarta.mail.internet.MimeMessage;
-
-import lombok.extern.slf4j.Slf4j;
 import org.messagesvc.model.ContactMessage;
 import org.messagesvc.repository.ContactMessageRepository;
 import org.messagesvc.web.dto.ContactRequest;
@@ -11,11 +9,14 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
-@Slf4j
 public class ContactMessageService {
 
     private final JavaMailSender javaMailSender;
@@ -52,7 +53,6 @@ public class ContactMessageService {
     public void sendEmailToCompany(ContactMessage message) {
 
         try {
-            log.info("📧 Preparing to send email to company: " + "gbuzunova");
 
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -63,18 +63,17 @@ public class ContactMessageService {
             helper.setText(buildCompanyEmailContent(message), true);
 
             javaMailSender.send(mimeMessage);
-            log.info("✅ Email sent to company successfully!");
+
             this.repository.save(message);
 
         } catch (Exception e) {
-           log.error("❌ Failed to send email to company: " + e.getMessage());
+            System.err.println("❌ Failed to send email to company: " + e.getMessage());
         }
     }
 
     @Async
     public void sendAutoReplyToUser(ContactMessage message) {
         try {
-            log.info("📧 Preparing auto-reply to user: " +message.getEmail());
 
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
@@ -85,7 +84,6 @@ public class ContactMessageService {
 
             javaMailSender.send(mimeMessage);
 
-            System.out.println("✅ Auto-reply sent to user successfully!");
 
         } catch (Exception e) {
             System.err.println("❌ Failed to send auto-reply: " + e.getMessage());
@@ -110,6 +108,34 @@ public class ContactMessageService {
                 "<p><strong>Your message:</strong><br>" + message.getEmail() + "</p>" +
                 "<hr>" +
                 "<p>Best regards,<br>EcoSpace Team</p>";
+    }
+    public List<ContactRequest>getAllMessages(){
+     return    this.repository.findAllByOrderByCreatedAtDesc().stream().map(this::convertToDto)
+                .collect(Collectors.toList());
+
+    }
+
+    private ContactRequest convertToDto(ContactMessage entity) {
+        ContactRequest dto = new ContactRequest();
+        dto.setName(entity.getName());
+        dto.setEmail(entity.getEmail());
+        dto.setPhone(entity.getPhone());
+        dto.setMessage(entity.getMessage());
+        dto.setCreatedAt(entity.getCreatedAt());
+        dto.setId(entity.getId());
+
+        return dto;
+    }
+    public List<ContactRequest>getAllMessagesByToday(){
+       List<ContactMessage>sentToday=repository.findByCreatedAtDate(LocalDate.now());
+       return sentToday.stream().map(this::convertToDto).collect(Collectors.toList());
+    }
+
+
+    public void deleteByID(UUID id) {
+        Optional<ContactMessage>message=this.repository.getAllById(id);
+        message.ifPresent(this.repository::delete);
+
     }
 }
 
