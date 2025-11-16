@@ -1,23 +1,43 @@
 package org.messagesvc.service;
 
-import com.twilio.rest.conversations.v1.conversation.Message;
+import com.twilio.Twilio;
+import com.twilio.type.PhoneNumber;
+import com.twilio.rest.api.v2010.account.Message;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.messagesvc.web.dto.SubscriptionRemainderRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-
-import java.time.ZonedDateTime;
 
 @Service
 @Slf4j
 public class SmsService {
 
-    public void sendSms(String message, String phone) {
+    @Value("${twilio.account-sid}")
+    private String accountSid;
+    @Value("${twilio.auth-token}")
+    private String authToken;
+    @Value("${twilio.phone-number}")
+    private String fromPhone;
+
+
+    @PostConstruct
+    public void init() {
         try {
-          Message.creator(phone)
-                    .setDateCreated(ZonedDateTime.now())
-                    .setBody(message)
-                    .setAuthor("Ecospace")
-                    .create();
+            Twilio.init(accountSid,authToken);
+            log.info("✅ Twilio initialized successfully for account: {}", accountSid);
+        } catch (Exception e) {
+            log.error("❌ Twilio initialization failed: {}", e.getMessage());
+        }
+    }
+
+    public void sendSms(String message, String toPhone) {
+        try {
+            Message twilioMessage = Message.creator(
+                    new PhoneNumber(toPhone),
+                    new PhoneNumber(fromPhone),
+                    message
+            ).create();
 
             log.info("SMS sent successfully!");
 
