@@ -4,12 +4,15 @@ import com.twilio.Twilio;
 import com.twilio.type.PhoneNumber;
 import com.twilio.rest.api.v2010.account.Message;
 import jakarta.annotation.PostConstruct;
-
+import lombok.extern.slf4j.Slf4j;
+import org.messagesvc.exception.SmsDeliveryException;
+import org.messagesvc.exception.TwilioInitException;
 import org.messagesvc.web.dto.SubscriptionRemainderRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 
 public class SmsService {
 
@@ -27,7 +30,8 @@ public class SmsService {
             Twilio.init(accountSid,authToken);
 
         } catch (Exception e) {
-            System.err.println(" Twilio initialization failed");
+           log.error(" Twilio initialization failed");
+           throw  new TwilioInitException("Failed to initialize Twilio SDK: " + e.getMessage());
         }
     }
 
@@ -39,10 +43,9 @@ public class SmsService {
                     message
             ).create();
 
-            System.out.println("SMS sent successfully!");
 
         } catch (Exception e) {
-            System.out.println("ERROR sending SMS: " + e.getMessage());
+            throw new SmsDeliveryException("Failed to send SMS: " + e.getMessage());
 
         }
 

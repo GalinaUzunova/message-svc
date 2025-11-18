@@ -1,12 +1,15 @@
 package org.messagesvc.service;
 
 
+import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import lombok.extern.slf4j.Slf4j;
 import org.messagesvc.model.ContactMessage;
 import org.messagesvc.repository.ContactMessageRepository;
 import org.messagesvc.web.dto.ContactRequest;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
@@ -19,6 +22,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ContactMessageService {
 
     private final JavaMailSender javaMailSender;
@@ -42,16 +46,15 @@ public class ContactMessageService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-
         sendEmailToCompany(message);
         sendAutoReplyToUser(message);
         message.setProcessed(true);
-
 
         return  repository.save(message);
     }
 
     @Async
+
     @CacheEvict(value = "messages",allEntries = true)
     public void sendEmailToCompany(ContactMessage message) {
 
@@ -60,17 +63,20 @@ public class ContactMessageService {
             MimeMessage mimeMessage = javaMailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-
             helper.setTo(COMPANY_EMAIL);
             helper.setSubject("New Contact Form: " + message.getSubject());
             helper.setText(buildCompanyEmailContent(message), true);
 
             javaMailSender.send(mimeMessage);
-
             this.repository.save(message);
 
-        } catch (Exception e) {
-            System.err.println("❌ Failed to send email to company: " + e.getMessage());
+        } catch (MailSendException e) {
+            log.error("❌ Failed to send email to company: " + e.getMessage());
+            throw  new MailSendException("Failed to send contact email to company", e);
+
+        } catch (MessagingException e) {
+            log.error("Unexpected error sending email to company: {}", e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -90,7 +96,7 @@ public class ContactMessageService {
 
 
         } catch (Exception e) {
-            System.err.println("❌ Failed to send auto-reply: " + e.getMessage());
+            log.error("❌ Failed to send auto-reply: " + e.getMessage());
         }
     }
 
@@ -139,8 +145,12 @@ public class ContactMessageService {
 
     @CacheEvict(value = "messages",allEntries = true)
     public void deleteByID(UUID id) {
-        Optional<ContactMessage>message=this.repository.getAllById(id);
-        message.ifPresent(this.repository::delete);
+        Optional<ContactMessage> message = this.repository.getAllById(id);
+        if(message.isEmpty()){
+            throw new RuntimeException("No messages!");
+        }
+       this.repository.delete(message.get());
+
 
     }
 }
